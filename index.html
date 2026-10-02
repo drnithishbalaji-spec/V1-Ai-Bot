@@ -1,0 +1,123 @@
+# ============================================
+# MINI BUDDY + WHATSAPP DOOR - all in one file!
+# ============================================
+# This single file has BOTH parts:
+#   PART 1: THE BRAIN - Mini Buddy's tiny chatbot brain
+#   PART 2: THE WHATSAPP DOOR - the code that WOULD let it
+#           chat on WhatsApp (still needs YOUR Meta setup
+#           to work for real - see the honest note below)
+#
+# HOW TO RUN:
+#   python3 mini_buddy_whatsapp.py
+#   Then pick:  1 = talk in the terminal
+#               2 = open the WhatsApp door (demo, needs: pip install flask)
+#
+# HONEST NOTE: no code can skip the real WhatsApp setup.
+# To REALLY chat on WhatsApp you still need:
+#   1. A Meta developer account at developers.facebook.com
+#   2. WhatsApp Business API approval from Meta (they give you secret keys)
+#   3. An always-on computer (server) so WhatsApp can find your bot.
+# Until then, the door only PRETENDS.
+# ============================================
+
+# ---------- PART 1: THE BRAIN ----------
+
+# Mini Buddy's tiny brain: words it knows -> replies it gives.
+BRAIN = {
+    "hello": "Hi there! I'm Mini Buddy, your demo bot. How are you?",
+    "hi": "Hi there! I'm Mini Buddy, your demo bot. How are you?",
+    "how are you": "I'm just code, so I'm always great! How are you?",
+    "your name": "I'm Mini Buddy - a tiny practice chatbot!",
+    "name": "I'm Mini Buddy - a tiny practice chatbot!",
+    "joke": "Why did the computer go to the doctor? Because it had a virus! Ha ha!",
+    "help": "I know these words: hello, joke, help, your name, time, bye. Try one!",
+    "time": "I can't see the clock, I'm just a demo! But your computer knows the time.",
+    "thank": "You're very welcome!",
+    "bye": "Bye bye! Thanks for playing with me!",
+}
+
+
+def get_reply(message):
+    """Read a message and pick a reply from the BRAIN."""
+    msg = message.lower().strip()
+    for keyword, reply in BRAIN.items():
+        if keyword in msg:
+            return reply
+    return "Hmm, I'm only a demo bot, so I don't know that one yet. Try 'help'!"
+
+
+def chat():
+    """Talk to Mini Buddy right here in the terminal."""
+    print("Mini Buddy is awake! Type 'bye' to stop.")
+    print("-" * 45)
+    while True:
+        user_text = input("You: ")
+        print("Mini Buddy:", get_reply(user_text))
+        print("-" * 45)
+        if "bye" in user_text.lower():
+            break
+
+
+# ---------- PART 2: THE WHATSAPP DOOR ----------
+
+# Try to load Flask (the tool that opens the door).
+# If it's missing, we tell the user kindly instead of crashing.
+try:
+    from flask import Flask, request
+    FLASK_OK = True
+except ImportError:
+    FLASK_OK = False
+
+# YOUR secret keys go here one day (Meta gives them to you).
+# They are empty on purpose - never share real keys with anyone!
+VERIFY_TOKEN = "PASTE_YOUR_VERIFY_TOKEN_HERE"
+WHATSAPP_TOKEN = "PASTE_YOUR_WHATSAPP_TOKEN_HERE"
+PHONE_NUMBER_ID = "PASTE_YOUR_PHONE_NUMBER_ID_HERE"
+
+app = Flask(__name__) if FLASK_OK else None
+
+
+def door():
+    """Open the WhatsApp door (demo - it only PRETENDS)."""
+    if not FLASK_OK:
+        print("Flask is not installed. Type this first:  pip install flask")
+        return
+
+    @app.route("/webhook", methods=["GET"])
+    def verify():
+        """WhatsApp knocks first to check the door is real."""
+        if request.args.get("hub.verify_token") == VERIFY_TOKEN:
+            return request.args.get("hub.challenge")
+        return "Wrong secret word!", 403
+
+    @app.route("/webhook", methods=["POST"])
+    def incoming():
+        """A message arrived! Read it, think, reply."""
+        data = request.json
+        try:
+            message = data["entry"][0]["changes"][0]["value"]["messages"][0]
+            user_text = message["text"]["body"]
+            sender = message["from"]
+        except (KeyError, IndexError, TypeError):
+            return "ok"  # not a text message; ignore politely
+
+        reply_text = get_reply(user_text)  # ask the BRAIN!
+        # DEMO: just print what WOULD be sent to WhatsApp.
+        print(f"[DEMO] Would send to {sender}: {reply_text}")
+        return "ok"
+
+    print("WhatsApp door open at http://localhost:5000/webhook (demo only!)")
+    print("It only PRETENDS - nothing really goes to WhatsApp yet.")
+    app.run(port=5000)
+
+
+# ---------- PICK YOUR MODE ----------
+if __name__ == "__main__":
+    print("Mini Buddy - all in one!")
+    print("  1 = talk in the terminal")
+    print("  2 = open the WhatsApp door (demo)")
+    choice = input("Pick 1 or 2: ").strip()
+    if choice == "2":
+        door()
+    else:
+        chat()
